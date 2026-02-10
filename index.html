@@ -1642,7 +1642,7 @@
             if (state.currentUser) {
                 authButton.textContent = 'Log off';
                 authButton.className = 'btn-danger';
-                userEmailDisplay.textContent = 'Logged as: ' + state.currentUser.email;
+                userEmailDisplay.innerHTML = '<strong>Logged as:</strong> ' + state.currentUser.email;
                 userEmailDisplay.style.display = 'inline';
             } else {
                 authButton.textContent = 'Login/Signup';
