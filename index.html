@@ -1472,6 +1472,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
+                        'ngrok-skip-browser-warning': 'true'
                     },
                     body: `email=${encodeURIComponent(email)}&userId=${encodeURIComponent(userId)}`
                 });
@@ -1682,15 +1683,22 @@
             console.log('🚀 Ecommerce Demo Initialized');
             console.log('📊 Segment Analytics loaded. Replace YOUR_WRITE_KEY with your actual Segment write key.');
 
-            // Restore user session from Segment Analytics
-            restoreUserFromAnalytics();
-
             // Restore cart from localStorage
             loadCartFromStorage();
 
             renderProducts();
             updateCartBadge();
-            updateAuthButton();
+
+            // Wait for analytics to be ready, then restore user session
+            if (typeof analytics !== 'undefined' && analytics.ready) {
+                analytics.ready(function() {
+                    console.log('📊 Analytics ready');
+                    restoreUserFromAnalytics();
+                });
+            } else {
+                // Fallback if analytics not available
+                updateAuthButton();
+            }
 
             console.log('💡 Open your browser console and Segment Debugger to see events');
         });
@@ -1720,6 +1728,9 @@
                     userId: userId,
                     email: traits.email
                 });
+
+                // Update UI to show logged in state
+                updateAuthButton();
             } else {
                 console.log('ℹ️ No user session found in Segment Analytics');
             }
