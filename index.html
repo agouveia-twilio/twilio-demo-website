@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electronics Store - Segment + Flex Demo</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
     <script defer src="https://media.twiliocdn.com/sdk/js/webchat-v3/releases/3.3.0/webchat.min.js" integrity="sha256-ydLLXnNrb26iFUvKAHsYt9atwfzz0LNcgBmo0NmD5Uk=" crossorigin="anonymous"></script>
     <style>
         * {
@@ -496,7 +497,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Electronics Store</h1>
+            <h1>💻 Electronics Store</h1>
             <div class="header-actions">
                 <span id="user-email-display" style="display: none; margin-right: 15px; color: #666; align-self: center;"></span>
                 <button class="btn-secondary" onclick="showView('products')">Products</button>
@@ -1649,33 +1650,6 @@
     <div id="twilio-webchat-widget-root"></div>
     <script>
     window.addEventListener("load", () => {
-        // Check if user is logged in and get their email
-        const userEmail = window.state?.currentUser?.email || "";
-        const isLoggedIn = !!window.state?.currentUser;
-
-        console.log('🔍 Checking user state for Twilio:', {
-            hasState: !!window.state,
-            isLoggedIn: isLoggedIn,
-            userEmail: userEmail
-        });
-
-        // Build email field attributes dynamically
-        const emailFieldAttributes = {
-            name: "email",
-            type: "email",
-            placeholder: "your.email@example.com",
-            required: true
-        };
-
-        // If user is logged in, pre-fill and lock the email field
-        if (isLoggedIn) {
-            emailFieldAttributes.value = userEmail;
-            emailFieldAttributes.readOnly = true;
-            console.log('✅ Pre-filling email field with:', userEmail);
-        } else {
-            console.log('ℹ️ No user logged in, email field will be empty');
-        }
-
         const appConfig = {
             deploymentKey: "CV6ab3a0796cc3ccf8213815441dbf329a",
             theme: {
@@ -1701,7 +1675,12 @@
                     {
                         label: "Email",
                         type: "InputItem",
-                        attributes: emailFieldAttributes
+                        attributes: {
+                            name: "email",
+                            type: "email",
+                            placeholder: "your.email@example.com",
+                            required: true
+                        }
                     },
                     {
                         label: "How can we help you?",
