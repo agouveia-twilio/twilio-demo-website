@@ -1478,7 +1478,7 @@
 
                 const data = await response.json();
 
-                if (response.ok && data.success) {
+                if (response.ok && data.success && data.match === true) {
                     // Success - Both email and userId match
                     console.log('✅ User validated successfully:', data);
 
