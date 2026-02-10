@@ -34,15 +34,20 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #eee;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
         h1 {
             color: #333;
+            font-size: 24px;
         }
 
         .header-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
         button {
@@ -80,6 +85,18 @@
 
         .btn-danger:hover {
             background: #cc0000;
+        }
+
+        .btn-auth {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-auth:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #63408a 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
         }
 
         .view {
@@ -430,6 +447,49 @@
             .modal-body {
                 grid-template-columns: 1fr;
             }
+
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 20px;
+                margin-bottom: 10px;
+            }
+
+            .header-actions {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .header-actions button {
+                flex: 1;
+                min-width: 80px;
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            #user-email-display {
+                width: 100%;
+                text-align: center;
+                margin: 0 0 10px 0 !important;
+                order: -1;
+            }
+
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+
+            .product-card {
+                padding: 10px;
+            }
+
+            .product-image {
+                height: 150px;
+            }
         }
     </style>
 </head>
@@ -443,7 +503,7 @@
                 <button class="btn-secondary" onclick="showView('cart')">
                     Cart <span class="cart-badge" id="cart-badge">0</span>
                 </button>
-                <button class="btn-secondary" id="auth-button" onclick="handleAuth()">Login/Signup</button>
+                <button class="btn-auth" id="auth-button" onclick="handleAuth()">Login/Signup</button>
             </div>
         </header>
 
@@ -1503,11 +1563,11 @@
             if (state.currentUser) {
                 authButton.textContent = 'Log off';
                 authButton.className = 'btn-danger';
-                userEmailDisplay.textContent = state.currentUser.email;
+                userEmailDisplay.textContent = 'Logged as: ' + state.currentUser.email;
                 userEmailDisplay.style.display = 'inline';
             } else {
                 authButton.textContent = 'Login/Signup';
-                authButton.className = 'btn-secondary';
+                authButton.className = 'btn-auth';
                 userEmailDisplay.style.display = 'none';
             }
         }
