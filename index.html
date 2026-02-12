@@ -1748,7 +1748,7 @@
             theme: {
                 isLight: true
             },
-            disablePreEngagementForm: true,
+            disablePreEngagementForm: false,
             // Pre-engagement form configuration
             preEngagementConfig: {
                 title: "LiveChat Support",
@@ -1789,7 +1789,33 @@
                 submitLabel: "Start Chat"
             }
         }
-        Twilio.initWebchat(appConfig);
+
+        Twilio.initWebchat(appConfig).then((webchat) => {
+            // Hook into afterStartEngagement to send custom formatted message
+            webchat.FlexWebChat.Actions.on("afterStartEngagement", (payload) => {
+                const { friendlyName, email, query } = payload.formData;
+
+                if (!friendlyName || !email || !query) return;
+
+                // Format the message
+                const formattedMessage = `Hello, I am ${friendlyName}, with email ${email}, and I have the following question: ${query}`;
+
+                // Get the channel and send the formatted message
+                const { channelSid } = webchat.manager.store.getState().flex.session;
+                webchat.manager.chatClient.getChannelBySid(channelSid)
+                    .then(channel => {
+                        channel.sendMessage(formattedMessage);
+                        console.log('✅ Sent formatted pre-engagement message');
+                    })
+                    .catch(error => {
+                        console.error('❌ Error sending pre-engagement message:', error);
+                    });
+            });
+
+            console.log('✅ Twilio WebChat initialized with custom engagement handler');
+        }).catch((error) => {
+            console.error('❌ Failed to initialize Twilio WebChat:', error);
+        });
     })
     </script>
 </body>
