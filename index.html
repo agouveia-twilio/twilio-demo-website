@@ -1742,56 +1742,12 @@
     </script>
     <div id="twilio-webchat-widget-root"></div>
     <script>
-    window.addEventListener("load", () => {
+        window.addEventListener("load", () => {
         const appConfig = {
-            deploymentKey: "CV6ab3a0796cc3ccf8213815441dbf329a",
-            theme: {
-                isLight: true
-            },
-            disablePreEngagementForm: false,
-            // Pre-engagement form configuration
-            preEngagementConfig: {
-                title: "LiveChat Support",
-                description: "How we can help you today?",
-                fields: [
-                    {
-                        label: "Name",
-                        type: "InputItem",
-                        attributes: {
-                            name: "friendlyName",
-                            type: "text",
-                            placeholder: "Enter your name",
-                            pattern: "^[a-zA-Z]+(([',. -][a-zA-Z ])?[a-zA-Z]*)*$",
-                            required: true
-                        }
-                    },
-                    {
-                        label: "Email",
-                        type: "InputItem",
-                        attributes: {
-                            name: "email",
-                            type: "email",
-                            placeholder: "your.email@example.com",
-                            required: true
-                        }
-                    },
-                    {
-                        label: "How can we help you?",
-                        type: "TextareaItem",
-                        attributes: {
-                            name: "query",
-                            type: "text",
-                            placeholder: "Type your question here",
-                            required: true
-                        }
-                    }
-                ],
-                submitLabel: "Start Chat"
-            }
+            deploymentKey: "CV6ab3a0796cc3ccf8213815441dbf329a"
         }
-
-        Twilio.initWebchat(appConfig);
-    })
+        Twilio.initWebchat(appConfig); 
+        });
     </script>
 </body>
 </html>
