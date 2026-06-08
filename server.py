@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
 Segment Profile API proxy server.
-Runs on port 3001. Set env vars before starting:
+Runs on port 3001.
 
-    export SEGMENT_SPACE_ID=spa_acdDFfuQCJp4TWzw9cKZfn
-    export SEGMENT_ACCESS_TOKEN=YPQuFPUFfvq5Cxm89wXvB8psZ6OganFJhyH7H78V66y4UP96g2IIdq5td_DGqBTalj1w9TjPnoikOjjno7suOi3iI1_UvzCpfu8vpa9W7a1Bgsg6AVBdX9WFj3SlWztb1W7tep_Nn_5Civ6hLEi7pIre-psAx7GprtuMAlhmTwskMESMPpc0hg5FCk2dozUgst0rVofprvfIvYHPfuRRxgwZ-bYhQ_mI03qX2uVsqsq142YhwxkFY9YJuKTN5MJSvRpD-XNZF5N9xlBxp-iBOvnWUPU=
-    python server.py
+    python3 server.py
 """
 
 import json
@@ -17,8 +15,8 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 PORT = 3001
-SPACE_ID = os.environ.get("SEGMENT_SPACE_ID", "")
-ACCESS_TOKEN = os.environ.get("SEGMENT_ACCESS_TOKEN", "")
+SPACE_ID = os.environ.get("SEGMENT_SPACE_ID", "spa_acdDFfuQCJp4TWzw9cKZfn")
+ACCESS_TOKEN = os.environ.get("SEGMENT_ACCESS_TOKEN", "YPQuFPUFfvq5Cxm89wXvB8psZ6OganFJhyH7H78V66y4UP96g2IIdq5td_DGqBTalj1w9TjPnoikOjjno7suOi3iI1_UvzCpfu8vpa9W7a1Bgsg6AVBdX9WFj3SlWztb1W7tep_Nn_5Civ6hLEi7pIre-psAx7GprtuMAlhmTwskMESMPpc0hg5FCk2dozUgst0rVofprvfIvYHPfuRRxgwZ-bYhQ_mI03qX2uVsqsq142YhwxkFY9YJuKTN5MJSvRpD-XNZF5N9xlBxp-iBOvnWUPU=")
 PROFILE_API_BASE = "https://profiles.segment.com/v1/spaces"
 
 # CORS headers sent on every response
