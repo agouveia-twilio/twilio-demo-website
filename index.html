@@ -918,6 +918,34 @@
             title: 'Product Catalog',
             url: window.location.href
         });
+
+        // ====================================================================
+        // SOURCE MIDDLEWARE — identify() with only specific traits
+        // Prevents merging stale cached traits on partial identify calls.
+        // Ref: https://www.twilio.com/docs/segment/connections/sources/catalog/libraries/website/javascript/middleware
+        // ====================================================================
+
+        const ONLY_THESE_TRAITS = "__onlyTheseTraits";
+
+        const stripContextMarker = (evt) => {
+            if (evt.type !== "identify") return evt;
+            const marker = evt.context?.[ONLY_THESE_TRAITS];
+            if (!marker) return evt;
+            const { [ONLY_THESE_TRAITS]: _omit, ...context } = evt.context;
+            return { ...evt, traits: { ...marker }, context };
+        };
+
+        const identifyOnlyThese = (userId, traits, options = {}) =>
+            analytics.identify(userId, traits, {
+                ...options,
+                context: { ...(options.context ?? {}), [ONLY_THESE_TRAITS]: traits ?? {} },
+            });
+
+        analytics.addSourceMiddleware(({ payload, next }) => {
+            const transformed = stripContextMarker(payload.obj);
+            if (transformed !== payload.obj) Object.assign(payload.obj, transformed);
+            next(payload);
+        });
     </script>
 
     <script>
@@ -1342,13 +1370,13 @@
             // Track Product Viewed
             trackProductViewed(product);
 
-            // Identify with last_item_search_identify so we can compare
-            // propagation speed vs the computed trait approach
+            // Identify with only last_item_search_identify — middleware ensures
+            // no other cached traits are merged into this call
             if (state.currentUser) {
-                analytics.identify(state.currentUser.userId, {
+                identifyOnlyThese(state.currentUser.userId, {
                     last_item_search_identify: product.name
                 });
-                console.log('📊 Segment Event: Identify last_item_search_identify =', product.name);
+                console.log('📊 Segment Event: Identify (onlyThese) last_item_search_identify =', product.name);
             }
 
             // Populate modal
