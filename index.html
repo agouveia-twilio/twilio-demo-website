@@ -444,6 +444,34 @@
             padding: 0;
         }
 
+        /* Last Item Searched Banner */
+        .last-searched-banner {
+            display: none;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f3e8ff 100%);
+            border: 1px solid #c5d3f8;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .last-searched-banner.visible {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .last-searched-label {
+            font-weight: 600;
+            color: #5568d3;
+            white-space: nowrap;
+        }
+
+        .last-searched-value {
+            color: #333;
+        }
+
         @media (max-width: 768px) {
             .modal-body {
                 grid-template-columns: 1fr;
@@ -507,6 +535,12 @@
                 </button>
             </div>
         </header>
+
+        <!-- Last Item Searched Banner -->
+        <div id="last-searched-banner" class="last-searched-banner">
+            <span class="last-searched-label">Last item you searched:</span>
+            <span id="last-searched-value" class="last-searched-value"></span>
+        </div>
 
         <!-- Products View -->
         <div id="products-view" class="view active">
@@ -1506,6 +1540,7 @@
 
                     // Update button and navigate back to products
                     updateAuthButton();
+                    fetchLastItemSearched(userId);
                     showView('products');
 
                 } else if (response.status === 403) {
@@ -1635,6 +1670,7 @@
             console.log('🗑️ Cleared cart from localStorage');
 
             // Update UI
+            hidLastItemSearched();
             updateCartBadge();
             updateAuthButton();
             showView('products');
@@ -1654,6 +1690,47 @@
                 authButton.className = 'btn-auth';
                 userEmailDisplay.style.display = 'none';
             }
+        }
+
+        // ====================================================================
+        // PROFILE API — LAST ITEM SEARCHED
+        // ====================================================================
+
+        // Expected backend response: { traits: { last_item_searched: "..." } }
+        // or flat: { last_item_searched: "..." }
+        async function fetchLastItemSearched(userId) {
+            try {
+                const response = await fetch('https://prehemiplegic-hugh-unexhaled.ngrok-free.dev/segment-profile-traits', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `userId=${encodeURIComponent(userId)}&traits=last_item_searched`
+                });
+
+                if (!response.ok) {
+                    console.warn('⚠️ Could not fetch profile traits:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                const lastItem = data.traits?.last_item_searched || data.last_item_searched;
+
+                if (lastItem) {
+                    document.getElementById('last-searched-value').textContent = lastItem;
+                    document.getElementById('last-searched-banner').classList.add('visible');
+                    console.log('📊 Profile API: last_item_searched =', lastItem);
+                } else {
+                    hidLastItemSearched();
+                }
+            } catch (error) {
+                console.warn('⚠️ Failed to fetch last_item_searched:', error);
+            }
+        }
+
+        function hidLastItemSearched() {
+            document.getElementById('last-searched-banner').classList.remove('visible');
+            document.getElementById('last-searched-value').textContent = '';
         }
 
         // ====================================================================
@@ -1735,6 +1812,7 @@
 
                 // Update UI to show logged in state
                 updateAuthButton();
+                fetchLastItemSearched(userId);
             } else {
                 console.log('ℹ️ No user session found in Segment Analytics');
             }
