@@ -512,18 +512,49 @@
             gap: 8px;
         }
 
+        .search-suggestion:last-child {
+            border-bottom: none;
+        }
+
         .search-suggestion-icon {
             font-size: 12px;
             color: #5568d3;
+            flex-shrink: 0;
         }
 
-        .search-suggestion span {
+        .search-suggestion-label {
+            font-size: 11px;
             font-weight: 600;
-            color: #5568d3;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .search-suggestion-label.computed {
+            background: #e8f0fe;
+            color: #3b5bdb;
+        }
+
+        .search-suggestion-label.identify {
+            background: #e8f8f0;
+            color: #2e7d32;
+        }
+
+        .search-suggestion-value {
+            font-weight: 600;
             cursor: pointer;
         }
 
-        .search-suggestion span:hover {
+        .search-suggestion-label.computed ~ .search-suggestion-value {
+            color: #3b5bdb;
+        }
+
+        .search-suggestion-label.identify ~ .search-suggestion-value {
+            color: #2e7d32;
+        }
+
+        .search-suggestion-value:hover {
             text-decoration: underline;
         }
 
@@ -1311,6 +1342,15 @@
             // Track Product Viewed
             trackProductViewed(product);
 
+            // Identify with last_item_search_identify so we can compare
+            // propagation speed vs the computed trait approach
+            if (state.currentUser) {
+                analytics.identify(state.currentUser.userId, {
+                    last_item_search_identify: product.name
+                });
+                console.log('📊 Segment Event: Identify last_item_search_identify =', product.name);
+            }
+
             // Populate modal
             document.getElementById('modal-product-image').src = product.image_url;
             document.getElementById('modal-product-image').alt = product.name;
@@ -1785,6 +1825,7 @@
 
             // Update UI
             lastItemSearched = null;
+            lastItemSearchedIdentify = null;
             closeSearchDropdown();
             updateCartBadge();
             updateAuthButton();
@@ -1824,7 +1865,8 @@
          *   userId      →  "user_id:<value>"
          *   anonymousId →  "anonymous_id:<value>"
          */
-        let lastItemSearched = null;
+        let lastItemSearched = null;         // from computed trait
+        let lastItemSearchedIdentify = null; // from identify trait
 
         async function fetchLastItemSearched(id, idType = 'userId') {
             if (!id) return;
@@ -1837,7 +1879,7 @@
                 const response = await fetch('https://prehemiplegic-hugh-unexhaled.ngrok-free.dev/segment-profile-traits', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `externalId=${encodeURIComponent(externalId)}&traits=last_item_searched`
+                    body: `externalId=${encodeURIComponent(externalId)}&traits=last_item_searched,last_item_search_identify`
                 });
 
                 if (!response.ok) {
@@ -1846,8 +1888,12 @@
                 }
 
                 const data = await response.json();
-                lastItemSearched = data.traits?.last_item_searched || null;
-                console.log(`📊 Profile API (${externalId}): last_item_searched =`, lastItemSearched);
+                lastItemSearched         = data.traits?.last_item_searched         || null;
+                lastItemSearchedIdentify = data.traits?.last_item_search_identify  || null;
+                console.log(`📊 Profile API (${externalId}):`,
+                    'computed =', lastItemSearched,
+                    '| identify =', lastItemSearchedIdentify
+                );
             } catch (error) {
                 console.warn('⚠️ Failed to fetch last_item_searched:', error);
             }
@@ -1871,14 +1917,32 @@
             const dropdown = document.getElementById('search-dropdown');
 
             if (query === '') {
+                const rows = [];
+
                 if (lastItemSearched) {
                     const safe = lastItemSearched.replace(/'/g, "\\'");
-                    dropdown.innerHTML = `
+                    rows.push(`
                         <div class="search-suggestion">
                             <span class="search-suggestion-icon">&#128336;</span>
-                            Last searched: <span onclick="applySearchSuggestion('${safe}')">${lastItemSearched}</span>
+                            <span class="search-suggestion-label computed">Computed trait</span>
+                            <span class="search-suggestion-value" onclick="applySearchSuggestion('${safe}')">${lastItemSearched}</span>
                         </div>
-                    `;
+                    `);
+                }
+
+                if (lastItemSearchedIdentify) {
+                    const safe = lastItemSearchedIdentify.replace(/'/g, "\\'");
+                    rows.push(`
+                        <div class="search-suggestion">
+                            <span class="search-suggestion-icon">&#128336;</span>
+                            <span class="search-suggestion-label identify">Identify trait</span>
+                            <span class="search-suggestion-value" onclick="applySearchSuggestion('${safe}')">${lastItemSearchedIdentify}</span>
+                        </div>
+                    `);
+                }
+
+                if (rows.length > 0) {
+                    dropdown.innerHTML = rows.join('');
                     dropdown.classList.add('visible');
                 } else {
                     dropdown.classList.remove('visible');
