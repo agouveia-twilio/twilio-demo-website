@@ -1696,19 +1696,31 @@
         // PROFILE API — LAST ITEM SEARCHED
         // ====================================================================
 
-        // Expected backend response: { traits: { last_item_searched: "..." } }
-        // or flat: { last_item_searched: "..." }
-        // idType: 'userId' | 'anonymousId'
+        /*
+         * BACKEND PROXY REQUIRED — Profile API does not support CORS.
+         *
+         * Your proxy at /segment-profile-traits must:
+         *   1. Receive: { externalId: "user_id:abc" | "anonymous_id:abc" }
+         *   2. Call:    GET https://profiles.segment.com/v1/spaces/<SPACE_ID>/collections/users/profiles/<externalId>/traits?include=last_item_searched
+         *               Authorization: Basic base64(<ACCESS_TOKEN>:)
+         *   3. Return:  { traits: { last_item_searched: "..." } }   (Profile API response, passed through)
+         *
+         * External ID format:
+         *   userId      →  "user_id:<value>"
+         *   anonymousId →  "anonymous_id:<value>"
+         */
         async function fetchLastItemSearched(id, idType = 'userId') {
             if (!id) return;
+
+            const externalId = idType === 'anonymousId'
+                ? `anonymous_id:${id}`
+                : `user_id:${id}`;
+
             try {
-                const body = `${encodeURIComponent(idType)}=${encodeURIComponent(id)}&traits=last_item_searched`;
                 const response = await fetch('https://prehemiplegic-hugh-unexhaled.ngrok-free.dev/segment-profile-traits', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `externalId=${encodeURIComponent(externalId)}&traits=last_item_searched`
                 });
 
                 if (!response.ok) {
@@ -1717,12 +1729,12 @@
                 }
 
                 const data = await response.json();
-                const lastItem = data.traits?.last_item_searched || data.last_item_searched;
+                const lastItem = data.traits?.last_item_searched;
 
                 if (lastItem) {
                     document.getElementById('last-searched-value').textContent = lastItem;
                     document.getElementById('last-searched-banner').classList.add('visible');
-                    console.log(`📊 Profile API (${idType}): last_item_searched =`, lastItem);
+                    console.log(`📊 Profile API (${externalId}): last_item_searched =`, lastItem);
                 } else {
                     hidLastItemSearched();
                 }
