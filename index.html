@@ -558,6 +558,41 @@
             text-decoration: underline;
         }
 
+        .search-refresh-row {
+            padding: 9px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-top: 1px solid #f0f0f0;
+            cursor: pointer;
+            font-size: 13px;
+            color: #888;
+            transition: background 0.15s;
+        }
+
+        .search-refresh-row:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .search-refresh-row.loading {
+            pointer-events: none;
+            color: #aaa;
+        }
+
+        .search-refresh-icon {
+            font-size: 13px;
+            display: inline-block;
+        }
+
+        .search-refresh-icon.spinning {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         .search-result-item {
             padding: 12px 16px;
             cursor: pointer;
@@ -1969,12 +2004,14 @@
                     `);
                 }
 
-                if (rows.length > 0) {
-                    dropdown.innerHTML = rows.join('');
-                    dropdown.classList.add('visible');
-                } else {
-                    dropdown.classList.remove('visible');
-                }
+                rows.push(`
+                    <div class="search-refresh-row" id="search-refresh-row" onclick="refreshTraits()">
+                        <span class="search-refresh-icon" id="search-refresh-icon">&#8635;</span>
+                        <span>Refresh traits</span>
+                    </div>
+                `);
+                dropdown.innerHTML = rows.join('');
+                dropdown.classList.add('visible');
                 return;
             }
 
@@ -2000,6 +2037,27 @@
                 `).join('');
             }
             dropdown.classList.add('visible');
+        }
+
+        async function refreshTraits() {
+            const row = document.getElementById('search-refresh-row');
+            const icon = document.getElementById('search-refresh-icon');
+            if (!row) return;
+
+            row.classList.add('loading');
+            icon.classList.add('spinning');
+            row.querySelector('span:last-child').textContent = 'Refreshing…';
+
+            const user = state.currentUser;
+            if (user) {
+                await fetchLastItemSearched(user.userId, 'userId');
+            } else if (typeof analytics !== 'undefined' && analytics.user) {
+                const anonId = analytics.user().anonymousId();
+                if (anonId) await fetchLastItemSearched(anonId, 'anonymousId');
+            }
+
+            // Re-render the dropdown in place with updated values
+            renderSearchDropdown('');
         }
 
         function applySearchSuggestion(value) {
