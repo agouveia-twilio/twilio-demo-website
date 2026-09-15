@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Electronics Store - Segment + Flex Demo</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💻</text></svg>">
-    <script defer src="https://media.twiliocdn.com/sdk/js/webchat-v3/releases/3.3.0/webchat.min.js" integrity="sha256-ydLLXnNrb26iFUvKAHsYt9atwfzz0LNcgBmo0NmD5Uk=" crossorigin="anonymous"></script>
+    <!-- Webchat 3.4.0: adds `isCustomizationEnabled` + stable twilio-webchat-* CSS classes (3.3.0 had only one) -->
+    <script defer src="https://media.twiliocdn.com/sdk/js/webchat-v3/releases/3.4.0/webchat.min.js" integrity="sha256-iyWhCPM290L0G1ChvDvK9a4tuV9PHqicyOLQNmVQS9Y=" crossorigin="anonymous"></script>
     <style>
         * {
             margin: 0;
@@ -2174,13 +2175,241 @@
         }
     </script>
     <div id="twilio-webchat-widget-root"></div>
+
+    <!-- Styling for the interactive elements. Tuned to sit alongside Twilio Paste defaults. -->
+    <style>
+        .twilio-interactive-panel {
+            /* Accent for the controls. #0263E0 is the Paste primary the widget uses by default;
+               this deployment's header is #030B5D, so switch this one value to match the brand. */
+            --twilio-interactive-accent: #0263e0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 16px;
+            border-top: 1px solid #e1e3ea;
+            background: #f4f4f6;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .twilio-interactive-panel:empty { display: none; }
+        .twilio-interactive-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #606b85;
+        }
+        .twilio-interactive-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .twilio-interactive-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--twilio-interactive-accent);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--twilio-interactive-accent);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background .15s, color .15s;
+        }
+        .twilio-interactive-btn:hover { background: var(--twilio-interactive-accent); color: #fff; }
+        .twilio-interactive-btn:disabled { opacity: .5; cursor: default; }
+        .twilio-interactive-panel select,
+        .twilio-interactive-panel input[type="date"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #8891aa;
+            border-radius: 4px;
+            background: #fff;
+            color: #121c2d;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .twilio-interactive-panel select:focus,
+        .twilio-interactive-panel input[type="date"]:focus {
+            outline: 2px solid var(--twilio-interactive-accent);
+            outline-offset: 1px;
+        }
+    </style>
+
     <script>
         window.addEventListener("load", () => {
-        const appConfig = {
-            deploymentKey: "CV6ab3a0796cc3ccf8213815441dbf329a"
-        }
-        Twilio.initWebchat(appConfig); 
+            const appConfig = {
+                deploymentKey: "CV6ab3a0796cc3ccf8213815441dbf329a",
+                isCustomizationEnabled: true
+            };
+            // Expose the webchat Redux store: the v3 bundle does `window.Cypress && (window.store = ue)`
+            // as a test hook, and that is the only way to reach the Conversation object --
+            // window.Twilio exposes just initWebchat/initLogger/getLogger. The flag is read once,
+            // at the end of init, so we set it here and drop it again in initInteractiveElements()
+            // to avoid leaving a global that other libraries use to detect a test runner.
+            window.Cypress = true;
+            Twilio.initWebchat(appConfig);
+            initInteractiveElements();
         });
+
+        /**
+         * Renders buttons / dropdown / calendar for bot messages carrying an
+         * `interactiveWebchatOptions` message attribute, and sends the chosen value back.
+         *
+         * Set the attribute on a Studio "Send & Wait For Reply" widget (Message Attributes field):
+         *   { "interactiveWebchatOptions": { "type": "buttons",  "options": [{ "uuid": "..", "content": "Label", "value": "sent-on-click" }] } }
+         *   { "interactiveWebchatOptions": { "type": "dropdown", "dropdownLabel": "Pick one", "options": [ .. ] } }
+         *   { "interactiveWebchatOptions": { "type": "calendar", "timezone": "Europe/Dublin" } }
+         */
+        function initInteractiveElements() {
+            const ATTR = 'interactiveWebchatOptions';
+            let panel = null;
+            let activeKey = null;   // sid of the message whose controls are on screen
+
+            // Webchat stores raw @twilio/conversations Message instances, so attributes are
+            // read straight off the instance -- no `source.state.attributes` hop like Webchat 2.x.
+            const optionsFor = (msg) => {
+                try {
+                    const attrs = typeof msg.attributes === 'string'
+                        ? JSON.parse(msg.attributes)
+                        : msg.attributes;
+                    return attrs && attrs[ATTR] ? attrs[ATTR] : null;
+                } catch (e) {
+                    console.warn('[interactive] could not parse message attributes', e);
+                    return null;
+                }
+            };
+
+            // Dock the panel directly above the composer, falling back to the panel body.
+            function mount() {
+                if (panel && panel.isConnected) return panel;
+                const input = document.querySelector('.twilio-webchat-message-input');
+                const host = input ? input.parentElement : document.querySelector('.twilio-webchat-panel');
+                if (!host) return null;
+                panel = document.createElement('div');
+                panel.className = 'twilio-interactive-panel';
+                if (input) host.insertBefore(panel, input);
+                else host.appendChild(panel);
+                return panel;
+            }
+
+            function clear() {
+                if (panel) panel.replaceChildren();
+                activeKey = null;
+            }
+
+            async function send(conversation, value) {
+                if (panel) panel.querySelectorAll('button, select, input').forEach(el => { el.disabled = true; });
+                try {
+                    await conversation.prepareMessage().setBody(String(value)).build().send();
+                    clear();
+                } catch (e) {
+                    console.error('[interactive] failed to send reply', e);
+                    if (panel) panel.querySelectorAll('button, select, input').forEach(el => { el.disabled = false; });
+                }
+            }
+
+            function build(opts, conversation) {
+                const frag = document.createDocumentFragment();
+                const list = Array.isArray(opts.options) ? opts.options : [];
+
+                if (opts.type === 'buttons') {
+                    const row = document.createElement('div');
+                    row.className = 'twilio-interactive-buttons';
+                    list.forEach((o) => {
+                        const b = document.createElement('button');
+                        b.type = 'button';
+                        b.className = 'twilio-interactive-btn';
+                        b.textContent = o.content;
+                        b.onclick = () => send(conversation, o.value ?? o.content);
+                        row.appendChild(b);
+                    });
+                    frag.appendChild(row);
+
+                } else if (opts.type === 'dropdown') {
+                    const sel = document.createElement('select');
+                    const ph = document.createElement('option');
+                    ph.value = '';
+                    ph.textContent = opts.dropdownLabel || 'Please select';
+                    ph.disabled = true;
+                    ph.selected = true;
+                    sel.appendChild(ph);
+                    list.forEach((o) => {
+                        const op = document.createElement('option');
+                        op.value = o.value ?? o.content;
+                        op.textContent = o.content;
+                        sel.appendChild(op);
+                    });
+                    sel.onchange = (e) => { if (e.target.value) send(conversation, e.target.value); };
+                    frag.appendChild(sel);
+
+                } else if (opts.type === 'calendar') {
+                    const input = document.createElement('input');
+                    input.type = 'date';
+                    // "Today" in the bot's timezone. en-CA gives YYYY-MM-DD, which is what
+                    // <input type="date"> wants -- keeps this dependency-free (no moment-timezone).
+                    if (opts.timezone) {
+                        try {
+                            input.min = new Intl.DateTimeFormat('en-CA', { timeZone: opts.timezone }).format(new Date());
+                        } catch (e) {
+                            console.warn('[interactive] unknown timezone', opts.timezone);
+                        }
+                    }
+                    input.onchange = (e) => {
+                        const v = e.target.value;
+                        if (!v) return;
+                        const [y, m, d] = v.split('-');
+                        send(conversation, `${m}/${d}/${y}`);   // MM/DD/YYYY, as in the Twilio blog
+                    };
+                    frag.appendChild(input);
+
+                } else {
+                    return null;   // unknown type -- leave the composer alone
+                }
+
+                if (opts.dropdownLabel && opts.type !== 'dropdown') {
+                    const label = document.createElement('div');
+                    label.className = 'twilio-interactive-label';
+                    label.textContent = opts.dropdownLabel;
+                    frag.insertBefore(label, frag.firstChild);
+                }
+                return frag;
+            }
+
+            function sync() {
+                const state = window.store && window.store.getState();
+                const chat = state && state.chat;
+                if (!chat || !chat.conversation || !Array.isArray(chat.messages)) return;
+
+                const last = chat.messages[chat.messages.length - 1];
+                if (!last) return;
+
+                // Only offer controls for the newest message, and only if it is not ours.
+                const mine = last.author === chat.conversationsClient?.user?.identity;
+                const opts = mine ? null : optionsFor(last);
+
+                if (!opts) { if (activeKey) clear(); return; }
+                if (activeKey === last.sid) return;   // already rendered
+
+                if (!mount()) return;                 // composer not in the DOM yet
+                const content = build(opts, chat.conversation);
+                if (!content) { clear(); return; }    // unknown type: drop any stale controls
+                panel.replaceChildren(content);
+                activeKey = last.sid;
+            }
+
+            // The store drives everything: it updates on messageAdded/messageUpdated, and
+            // re-running sync() also re-mounts the panel if the widget unmounts and remounts.
+            (function attach(tries) {
+                if (!window.store) {
+                    if (tries > 0) return void setTimeout(() => attach(tries - 1), 250);
+                    delete window.Cypress;
+                    return console.warn('[interactive] window.store never appeared -- webchat internals may have changed');
+                }
+                delete window.Cypress;   // got the store; stop pretending to be a test runner
+                window.store.subscribe(sync);
+                setInterval(sync, 500);   // catches DOM remounts the store does not signal
+                sync();
+            })(40);
+        }
     </script>
 </body>
 </html>
